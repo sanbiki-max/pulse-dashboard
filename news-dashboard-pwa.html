@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PULSE">
+<meta name="theme-color" content="#080a0e">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23080a0e'/><text y='.9em' font-size='80' x='10'>📰</text></svg>">
+<title>PULSE / Daily Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #080a0e;
+    --bg-1: #0d1117;
+    --bg-2: #141920;
+    --bg-3: #1c2330;
+    --border: rgba(255,255,255,0.06);
+    --border-active: rgba(0,255,170,0.3);
+    --accent: #00ffaa;
+    --accent-dim: rgba(0,255,170,0.12);
+    --accent-glow: rgba(0,255,170,0.06);
+    --red: #ff4466;
+    --gold: #ffcc44;
+    --blue: #44aaff;
+    --purple: #aa66ff;
+    --text-1: rgba(255,255,255,0.92);
+    --text-2: rgba(255,255,255,0.55);
+    --text-3: rgba(255,255,255,0.28);
+    --tab-h: 64px;
+    --header-h: 72px;
+    --safe-bottom: env(safe-area-inset-bottom, 16px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg-0); color: var(--text-1); overflow: hidden; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── LAYOUT ── */
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    height: var(--header-h);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background: var(--bg-0);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    z-index: 10;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.4;
+  }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,255,170,0.5);
+  }
+  .logo span { color: var(--text-3); font-size: 10px; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.2em; display: block; margin-top: -4px; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .date-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    text-align: right;
+    line-height: 1.4;
+  }
+  .dot-live {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* ── SCROLL AREA ── */
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    padding-bottom: calc(var(--tab-h) + var(--safe-bottom) + 8px);
+  }
+  .scroll-area::-webkit-scrollbar { display: none; }
+
+  /* ── TAB PANEL ── */
+  .tab-panel { display: none; animation: fadeUp 0.3s ease; }
+  .tab-panel.active { display: block; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── SECTION HEADER ── */
+  .section-header {
+    padding: 24px 20px 12px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.08em;
+    color: var(--text-1);
+  }
+  .section-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  /* ── HERO CARD ── */
+  .hero-card {
+    margin: 0 16px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  .hero-card:active { transform: scale(0.98); }
+  .hero-card:hover { border-color: var(--border-active); }
+  .hero-thumb {
+    width: 100%; height: 160px;
+    background: var(--bg-3);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .hero-thumb-inner {
+    width: 100%; height: 100%;
+    background: linear-gradient(135deg, #0d1117 0%, #1c2330 50%, #141920 100%);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .hero-thumb-inner::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 30% 50%, rgba(0,255,170,0.08) 0%, transparent 60%);
+  }
+  .hero-thumb-emoji { font-size: 56px; opacity: 0.7; }
+  .hero-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 80px;
+    background: linear-gradient(transparent, var(--bg-2));
+  }
+  .hero-body { padding: 14px 16px 16px; }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    letter-spacing: 0.15em; color: var(--accent);
+    background: var(--accent-dim); border-radius: 4px;
+    padding: 3px 8px; margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .hero-title { font-size: 16px; font-weight: 700; line-height: 1.5; color: var(--text-1); margin-bottom: 8px; }
+  .hero-desc { font-size: 12px; color: var(--text-2); line-height: 1.7; }
+  .hero-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+  .hero-source { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); }
+  .hero-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); }
+
+  /* ── NEWS LIST ── */
+  .news-list { padding: 0 16px; display: flex; flex-direction: column; gap: 2px; }
+
+  .news-item {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 14px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    position: relative; overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .news-item:active { background: var(--bg-2); }
+  .news-item::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--item-color, var(--accent));
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .news-item:active::before { opacity: 1; }
+
+  .news-icon {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: var(--bg-3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
+  .news-content { flex: 1; min-width: 0; }
+  .news-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    letter-spacing: 0.12em; color: var(--item-color, var(--accent));
+    text-transform: uppercase; margin-bottom: 4px; opacity: 0.8;
+  }
+  .news-title { font-size: 13px; font-weight: 500; line-height: 1.55; color: var(--text-1); }
+  .news-footer { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .news-source { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3); }
+  .news-dot { width: 2px; height: 2px; border-radius: 50%; background: var(--text-3); }
+  .news-time { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3); }
+  .news-importance {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--item-color, var(--accent));
+    flex-shrink: 0; margin-top: 4px;
+    box-shadow: 0 0 6px var(--item-color, var(--accent));
+  }
+
+  /* ── THREAD LIST (2ch style) ── */
+  .thread-item {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 8px;
+    position: relative; overflow: hidden;
+  }
+  .thread-item:active { background: var(--bg-2); }
+  .thread-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .thread-num {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--accent); opacity: 0.5; font-weight: 500;
+  }
+  .thread-board {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: var(--text-3); background: var(--bg-3);
+    padding: 2px 6px; border-radius: 4px; letter-spacing: 0.05em;
+  }
+  .thread-title { font-size: 13px; font-weight: 500; line-height: 1.6; color: var(--text-1); margin-bottom: 8px; }
+  .thread-preview {
+    font-size: 11px; color: var(--text-2); line-height: 1.7;
+    background: var(--bg-3); border-radius: 8px;
+    padding: 8px 12px; border-left: 2px solid var(--accent);
+    border-left-color: var(--accent); opacity: 0.8;
+  }
+  .thread-footer { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+  .thread-stat { display: flex; align-items: center; gap: 4px; }
+  .thread-stat-icon { font-size: 11px; }
+  .thread-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); }
+  .thread-hot {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: var(--red); background: rgba(255,68,102,0.1);
+    padding: 2px 8px; border-radius: 4px; letter-spacing: 0.1em;
+  }
+
+  /* ── IMAGE GEN GRID ── */
+  .imggen-list { padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
+  .imggen-item {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .imggen-item:hover { border-color: rgba(170,102,255,0.3); }
+  .imggen-preview {
+    height: 120px;
+    background: var(--bg-3);
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+  .imggen-gradient {
+    position: absolute; inset: 0;
+  }
+  .imggen-label {
+    position: absolute; bottom: 8px; right: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    background: rgba(0,0,0,0.7); color: var(--text-2);
+    padding: 2px 7px; border-radius: 4px; letter-spacing: 0.08em;
+  }
+  .imggen-body { padding: 12px 14px 14px; }
+  .imggen-tool {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: var(--purple); letter-spacing: 0.1em;
+    background: rgba(170,102,255,0.1); border-radius: 4px;
+    padding: 2px 8px; margin-bottom: 7px;
+  }
+  .imggen-title { font-size: 13px; font-weight: 500; color: var(--text-1); margin-bottom: 5px; }
+  .imggen-desc { font-size: 11px; color: var(--text-2); line-height: 1.65; }
+  .imggen-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+  .imggen-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: var(--text-3); background: var(--bg-3);
+    padding: 2px 7px; border-radius: 4px;
+  }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: var(--border); margin: 4px 16px 12px; }
+  .tab-btn[data-tab="domestic"] { --tab-color: var(--accent); }
+  .tab-btn[data-tab="world"] { --tab-color: var(--blue); }
+  .tab-btn[data-tab="aitrend"] { --tab-color: var(--gold); }
+  .tab-btn[data-tab="imagegen"] { --tab-color: var(--purple); }
+  .tab-btn[data-tab="tech"] { --tab-color: #ff8c44; }
+  .tab-btn[data-tab="agent"] { --tab-color: #00e5ff; }
+  .tab-icon { font-size: 18px; transition: transform 0.2s; }
+  .tab-btn.active .tab-icon { transform: scale(1.1); }
+
+  /* ── BOTTOM TABS: scrollable ── */
+  .bottom-tabs {
+    position: fixed;
+    bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 480px;
+    height: calc(var(--tab-h) + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    background: rgba(8,10,14,0.92);
+    backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: stretch;
+    z-index: 100;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .bottom-tabs::-webkit-scrollbar { display: none; }
+  .bottom-tabs::before {
+    content: '';
+    position: absolute; top: -1px; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+  }
+  .tab-btn {
+    flex: 0 0 72px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    background: none; border: none;
+    color: var(--text-3);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 9px; font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s;
+    position: relative; padding: 0;
+    padding-top: 8px;
+    white-space: nowrap;
+  }
+  .tab-btn::before {
+    content: '';
+    position: absolute; top: 0; left: 15%; right: 15%; height: 2px;
+    background: var(--tab-color);
+    border-radius: 0 0 2px 2px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    box-shadow: 0 0 8px var(--tab-color);
+  }
+  .tab-btn.active { color: var(--tab-color); }
+  .tab-btn.active::before { opacity: 1; }
+
+  /* ── EMPTY SPACER ── */
+  .bottom-spacer { height: 80px; }
+
+  /* ── SCROLLBAR FIX ── */
+  * { scrollbar-width: none; }
+
+  /* ── DETAIL MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(4,6,10,0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex; align-items: flex-end;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal-sheet {
+    width: 100%; max-width: 480px; margin: 0 auto;
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 20px 20px 0 0;
+    padding: 0 0 calc(var(--safe-bottom, 16px) + 24px);
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    max-height: 88dvh;
+    overflow-y: auto;
+  }
+  .modal-overlay.open .modal-sheet { transform: translateY(0); }
+  .modal-handle {
+    width: 36px; height: 4px; border-radius: 2px;
+    background: var(--text-3); margin: 14px auto 0;
+  }
+  .modal-header {
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .modal-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    letter-spacing: 0.15em; color: var(--modal-color, var(--accent));
+    background: rgba(0,255,170,0.08); border-radius: 4px;
+    padding: 3px 8px; margin-bottom: 8px;
+    text-transform: uppercase;
+    border: 1px solid rgba(0,255,170,0.15);
+  }
+  .modal-title {
+    font-size: 15px; font-weight: 700; line-height: 1.55;
+    color: var(--text-1); margin-bottom: 10px; padding-right: 36px;
+  }
+  .modal-meta { display: flex; align-items: center; gap: 8px; }
+  .modal-source { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3); }
+  .modal-time { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3); }
+  .modal-sep { width: 2px; height: 2px; border-radius: 50%; background: var(--text-3); }
+  .modal-body { padding: 18px 20px; }
+  .modal-summary {
+    font-size: 13px; color: var(--text-2); line-height: 1.85;
+    border-left: 2px solid var(--modal-color, var(--accent));
+    padding-left: 12px; margin-bottom: 18px;
+  }
+  .modal-divider-label {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+  }
+  .modal-divider-label span {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    letter-spacing: 0.15em; color: var(--text-3); text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .modal-divider-label::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  .modal-detail {
+    font-size: 13px; color: var(--text-2); line-height: 1.9;
+  }
+  .modal-detail p { margin-bottom: 13px; }
+  .modal-detail p:last-child { margin-bottom: 0; }
+  .modal-close {
+    position: absolute; top: 16px; right: 16px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--bg-3); border: 1px solid var(--border);
+    color: var(--text-2); font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .tap-hint {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: var(--accent); opacity: 0.5; margin-top: 5px;
+    letter-spacing: 0.08em;
+  }
+
+  /* ── UPDATE PANEL ── */
+  .update-btn {
+    position: fixed; top: 18px; right: 20px; z-index: 50;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--bg-3); border: 1px solid var(--border);
+    color: var(--text-2); font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: border-color 0.2s, background 0.2s;
+  }
+  .update-btn:active { background: var(--bg-2); border-color: var(--accent); }
+
+  .update-overlay {
+    position: fixed; inset: 0; z-index: 300;
+    background: rgba(4,6,10,0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .update-overlay.open { opacity: 1; pointer-events: all; }
+
+  .update-header {
+    padding: 56px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .update-header-title {
+    font-family: 'Bebas Neue', sans-serif; font-size: 22px;
+    letter-spacing: 0.1em; color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .update-header-sub {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--text-3); line-height: 1.6;
+  }
+  .update-close {
+    position: absolute; top: 52px; right: 20px;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--bg-3); border: 1px solid var(--border);
+    color: var(--text-2); font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+
+  .update-body { flex: 1; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+
+  .update-textarea {
+    flex: 1; min-height: 220px;
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px;
+    color: var(--text-1); font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; line-height: 1.6; resize: none;
+    outline: none; transition: border-color 0.2s;
+  }
+  .update-textarea:focus { border-color: var(--accent); }
+  .update-textarea::placeholder { color: var(--text-3); }
+
+  .update-actions { display: flex; gap: 10px; }
+  .update-apply-btn {
+    flex: 1; padding: 14px;
+    background: var(--accent); border: none; border-radius: 12px;
+    color: #080a0e; font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .update-apply-btn:active { opacity: 0.8; }
+  .update-cancel-btn {
+    padding: 14px 20px;
+    background: var(--bg-3); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--text-2);
+    font-family: 'Noto Sans JP', sans-serif; font-size: 14px;
+    cursor: pointer;
+  }
+
+  .update-status {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    text-align: center; padding: 8px; border-radius: 8px;
+    display: none;
+  }
+  .update-status.success { display: block; color: var(--accent); background: var(--accent-dim); }
+  .update-status.error { display: block; color: var(--red); background: rgba(255,68,102,0.1); }
+
+  .update-steps {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+  }
+  .update-steps-title {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    letter-spacing: 0.15em; color: var(--text-3);
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .update-step {
+    display: flex; gap: 10px; align-items: flex-start;
+    margin-bottom: 8px; font-size: 12px; color: var(--text-2);
+    line-height: 1.5;
+  }
+  .update-step:last-child { margin-bottom: 0; }
+  .update-step-num {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--accent); background: var(--accent-dim);
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">
+      PULSE
+      <span>DAILY BRIEF</span>
+    </div>
+    <div class="header-right">
+      <div class="date-badge" id="dateBadge"></div>
+      <div class="dot-live"></div>
+    </div>
+  </header>
+
+  <!-- UPDATE BUTTON -->
+  <button class="update-btn" onclick="openUpdatePanel()" title="ニュースを更新">↻</button>
+
+  <!-- UPDATE PANEL -->
+  <div class="update-overlay" id="updateOverlay">
+    <div class="update-header">
+      <div class="update-header-title">NEWS UPDATE</div>
+      <div class="update-header-sub">ClaudeからコピーしたJSONを貼り付けて「反映」を押すだけ</div>
+      <button class="update-close" onclick="closeUpdatePanel()">✕</button>
+    </div>
+    <div class="update-body">
+      <div class="update-steps">
+        <div class="update-steps-title">手順</div>
+        <div class="update-step"><div class="update-step-num">1</div><div>このチャットで「更新して」と送る</div></div>
+        <div class="update-step"><div class="update-step-num">2</div><div>Claudeが出力した <code style="background:var(--bg-3);padding:1px 5px;border-radius:3px;font-size:10px">const NEWS_DATA = {…};</code> を全選択してコピー</div></div>
+        <div class="update-step"><div class="update-step-num">3</div><div>下のテキストエリアに貼り付けて「反映」を押す</div></div>
+      </div>
+      <textarea class="update-textarea" id="updateTextarea" placeholder="ここにClaudeからコピーしたconst NEWS_DATA = { ... }; を貼り付けてください"></textarea>
+      <div class="update-status" id="updateStatus"></div>
+      <div class="update-actions">
+        <button class="update-apply-btn" onclick="applyUpdate()">✓ 反映する</button>
+        <button class="update-cancel-btn" onclick="closeUpdatePanel()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCROLL AREA -->
+  <div class="scroll-area" id="scrollArea">
+
+    <!-- ▼ 国内ニュース -->
+    <div class="tab-panel active" id="panel-domestic">
+      <div class="section-header">
+        <div class="section-title">国内ニュース</div>
+        <div class="section-count" id="count-domestic"></div>
+      </div>
+      <div id="domestic-hero"></div>
+      <div class="divider"></div>
+      <div class="news-list" id="domestic-list"></div>
+      <div class="bottom-spacer"></div>
+    </div>
+
+    <!-- ▼ 世界情勢 -->
+    <div class="tab-panel" id="panel-world">
+      <div class="section-header">
+        <div class="section-title">世界情勢</div>
+        <div class="section-count" id="count-world"></div>
+      </div>
+      <div id="world-hero"></div>
+      <div class="divider"></div>
+      <div class="news-list" id="world-list"></div>
+      <div class="bottom-spacer"></div>
+    </div>
+
+    <!-- ▼ 2ch AIトレンド -->
+    <div class="tab-panel" id="panel-aitrend">
+      <div class="section-header">
+        <div class="section-title">AIトレンド</div>
+        <div class="section-count" id="count-aitrend"></div>
+      </div>
+      <div class="imggen-list" id="aitrend-list"></div>
+      <div class="bottom-spacer"></div>
+    </div>
+
+    <!-- ▼ 画像生成AI -->
+    <div class="tab-panel" id="panel-imagegen">
+      <div class="section-header">
+        <div class="section-title">画像生成AI</div>
+        <div class="section-count" id="count-imagegen"></div>
+      </div>
+      <div class="imggen-list" id="imagegen-list"></div>
+      <div class="bottom-spacer"></div>
+    </div>
+
+    <!-- ▼ テクノロジー -->
+    <div class="tab-panel" id="panel-tech">
+      <div class="section-header">
+        <div class="section-title">テクノロジー</div>
+        <div class="section-count" id="count-tech"></div>
+      </div>
+      <div id="tech-hero"></div>
+      <div class="divider"></div>
+      <div class="news-list" id="tech-list"></div>
+      <div class="bottom-spacer"></div>
+    </div>
+
+    <!-- ▼ AIエージェント -->
+    <div class="tab-panel" id="panel-agent">
+      <div class="section-header">
+        <div class="section-title">AIエージェント</div>
+        <div class="section-count" id="count-agent"></div>
+      </div>
+      <div id="agent-hero"></div>
+      <div class="divider"></div>
+      <div class="news-list" id="agent-list"></div>
+      <div class="bottom-spacer"></div>
+    </div>
+
+  </div><!-- /scroll-area -->
+
+  <!-- DETAIL MODAL -->
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal-sheet" id="modalSheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="modal-tag" id="modalTag"></div>
+        <div class="modal-title" id="modalTitle"></div>
+        <div class="modal-meta">
+          <span class="modal-source" id="modalSource"></span>
+          <span class="modal-sep"></span>
+          <span class="modal-time" id="modalTime"></span>
+        </div>
+        <button class="modal-close" onclick="closeModalBtn()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-summary" id="modalSummary"></div>
+        <div class="modal-divider-label"><span>詳細</span></div>
+        <div class="modal-detail" id="modalDetail"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM TABS -->
+  <nav class="bottom-tabs">
+    <button class="tab-btn active" data-tab="domestic">
+      <span class="tab-icon">🗾</span>国内
+    </button>
+    <button class="tab-btn" data-tab="world">
+      <span class="tab-icon">🌏</span>世界
+    </button>
+    <button class="tab-btn" data-tab="aitrend">
+      <span class="tab-icon">🤖</span>AIトレンド
+    </button>
+    <button class="tab-btn" data-tab="imagegen">
+      <span class="tab-icon">🎨</span>画像生成
+    </button>
+    <button class="tab-btn" data-tab="tech">
+      <span class="tab-icon">💻</span>テック
+    </button>
+    <button class="tab-btn" data-tab="agent">
+      <span class="tab-icon">💡</span>エージェント
+    </button>
+  </nav>
+</div>
+
+<script>
+/* ============================================================
+   📰 NEWS DATA — ここのデータを書き換えるだけで翌日に更新できます
+   ============================================================ */
+const NEWS_DATA = {
+
+  /* ── 国内ニュース ── */
+  domestic: {
+    hero: {
+      emoji: "🌀",
+      tag: "気象",
+      title: "台風6号「チャンミー」、明日3日に関東へ最接近―九州〜東日本で暴風・大雨に厳重警戒",
+      desc: "台風6号チャンミーは2日9時現在、屋久島の南西約190kmを北北東に毎時25kmで進行中。中心気圧975hPa・最大風速25m/s。3日朝の通勤・通学時間帯も大雨や横殴りの雨となる見込みで、気象庁は東海・関東甲信越を中心に厳重警戒を呼びかけている。",
+      detail: "<p>台風6号（チャンミー）は2日午前9時現在、屋久島の南西約190kmの海上を北北東に毎時25kmで進んでいる。中心気圧は975ヘクトパスカル、中心付近の最大風速は25m/s、最大瞬間風速は45m/sに達する見込み。</p><p>気象庁の予報によると、2日夜には足摺岬（高知県）の南約100kmに達し、3日には浜松市の南約60km付近を通過する見通し。その後、温帯低気圧に変わりながら4日には日本の東へ抜ける予想だ。</p><p>九州・四国では2日中、東海・関東では3日の朝の通勤・通学時間帯にかけて最も荒天となる見込み。特に線状降水帯の発生が懸念されており、土砂災害や浸水害への警戒が必要。交通機関への大規模な遅延・運休も予想されている。沖縄では台風通過に伴い16人が軽傷を負ったと報告された。</p>",
+      source: "気象庁 / tenki.jp",
+      time: "10:45"
+    },
+    items: [
+      { color: "var(--accent)", icon: "🏛️", tag: "政治", title: "高市政権、2月衆院選で自民単独3分の2超の歴史的大勝―修憲手続きの本格始動へ", source: "時事通信", time: "既報",
+        detail: "<p>2026年2月8日投開票の衆院選で、高市早苗首相率いる自民党が定数465に対し単独で3分の2を超える歴史的大勝を収めた。投票率は56.26%と前回（53.85%）を上回った。</p><p>自維連立で過半数割れしていた参院においても、再可決が現実的な選択肢となり、国会審議が大幅に進めやすくなる見通し。高市首相が「歴史的使命」と位置づける憲法9条改正・自衛隊の国防軍化に向けた改憲手続きが本格的に議題に上り始めている。</p><p>一方、連立パートナーの維新は「定数削減」法案の早期成立を連立継続の条件として掲げており、両党の利害調整が政権の最大課題となっている。維新は閣外協力の見直しもほのめかすなど、与党内の緊張感は続いている。</p>" },
+      { color: "var(--gold)", icon: "🛢️", tag: "経済", title: "ホルムズ海峡危機でナフサ供給逼迫が深刻化―高市首相「代替調達で年越し可能」と表明", source: "日本経済新聞", time: "既報",
+        detail: "<p>2026年2月末に始まったイランによるホルムズ海峡の事実上の封鎖を受け、日本の石油化学産業の基幹原料であるナフサの供給が著しく逼迫している。石油化学工業協会は「供給の蛇口が閉まった状態」と表現し、代替調達の行方を注視している。</p><p>高市首相は4月30日の関係閣僚会議で、ナフサ由来の化学製品について「代替調達が進んだ」として年越し供給が可能との見通しを示した。ただし、プラスチック・合成樹脂・化学繊維の製造原価は直撃を受けており、LPG価格は前月比最大80%高と急騰した。</p><p>医療現場で使われる注射器やゴム手袋も石油由来製品であり、広範な業界への波及が懸念されている。政府は備蓄の活用や代替輸入ルートの確保を急いでいるが、機雷除去には6カ月程度を要するとの見方もあり、中長期的な供給リスクは払拭されていない。</p>" },
+      { color: "var(--red)", icon: "📉", tag: "市場", title: "日経平均、ホルムズ封鎖ショックから徐々に回復―5万4000円台で推移", source: "Bloomberg Japan", time: "既報",
+        detail: "<p>2026年2月末の米・イスラエルによるイラン空爆とホルムズ海峡封鎖宣言を受け、日経平均株価は週明けの市場で歴史的な急落を記録。6万円目前から一時5万円台前半まで大幅に下落した。</p><p>3月9日（月）には過去3番目の下げ幅を記録したが、翌10日には1519円（+2.88%）の大幅反発。その後も買い戻しの動きが続き、現在は5万4000円台での推移が続いている。</p><p>専門家からは「日経平均の6万円は通過点で上昇余地は大きい」との見方も出ており、中東情勢の緩和と国内企業決算の改善を条件に、年後半に向けた回復シナリオも描かれている。ただし、原油・ナフサ価格の高止まりが製造業の収益を圧迫し、上値を抑える要因となっている。</p>" },
+      { color: "var(--blue)", icon: "🤝", tag: "与党", title: "維新「閣外協力の見直し」をちらつかせ自民を牽制―定数削減法案の国会審議が難航", source: "東京新聞", time: "既報",
+        detail: "<p>高市・自維連立政権において、連立パートナーの日本維新の会が「衆院定数の1割削減」を閣外協力継続の絶対条件として掲げ、自民党との協議が難航している。維新の吉村洋文代表は定数削減を「改革のセンターピン」と位置づけており、実現できなければ閣外協力の見直しに発展しかねない状況だ。</p><p>衆院の現勢力は自民党201議席・維新34議席で過半数を確保しているが、参院では自民101・維新19の計120議席と過半数まで5議席不足。国民民主か参政どちらかの協力がなければ参院での法案成立が困難なため、高市政権の政策運営には依然として制約がある。</p><p>日経MJが2日に発表した2026年上期ヒット商品番付では、消費トレンドのキーワードとして「P」が選定された。</p>" },
+      { color: "var(--purple)", icon: "🏆", tag: "消費", title: "日経MJヒット商品番付2026年上期版を発表―消費トレンドのキーワードは「P」", source: "日経MJ", time: "6/2 午前",
+        detail: "<p>日本経済新聞社が毎年恒例の日経MJヒット商品番付2026年上期版を6月2日午前に発表した。今期のキーワードは「P」とされ、物価高（Price）・防衛（Protection）・パーソナライズ（Personalize）など、複数の「P」ワードが消費行動を特徴づけているとの分析だ。</p><p>ホルムズ海峡封鎖による原材料コスト上昇を背景に、節約志向とプレミアム志向が二極化する傾向が顕著。一方で「油断禁物の世の中」を反映したリスク対応型の商品・サービスが大きくリフトアップしたとされている。</p><p>詳細な分析は日経MJの紙面および電子版で確認可能。生解説イベントも同日実施された。</p>" },
+    ]
+  },
+
+  /* ── 世界情勢 ── */
+  world: {
+    hero: {
+      emoji: "🛢️",
+      tag: "地政学",
+      title: "ホルムズ海峡「事実上の封鎖」が長期化―1600隻・2.3万人が湾内に孤立、米・イラン交渉は膠着",
+      desc: "イランによるホルムズ海峡封鎖は2月末の米・イスラエルによる空爆を機に開始。5月時点でも約1600隻・87カ国2万3000人の船員がペルシャ湾内で立ち往生したまま。米・イランは「1ページのMOU」合意に最接近したとされるが、Project Freedomは一時停止状態が続く。",
+      detail: "<p>2026年2月末、米国・イスラエルによるイラン空爆を契機にイランはホルムズ海峡の「事実上の封鎖」を宣言。世界の原油輸送量の約20%、日本のタンカーの93%が通過するこの要衝の閉鎖は、世界経済に深刻な打撃を与えている。</p><p>5月7日時点で約1600隻・87カ国・2万3000人の船員がペルシャ湾内で立ち往生。米国主導のProject Freedomは48時間で一時停止され、実効的な航行再開には至っていない。中国・ロシアの船舶は通航が黙認される一方、日・米・EU籍の商船には拿捕リスクが生じる非対称的な状況が続く。</p><p>国連安保理決議は中露の拒否権で否決。英仏のマクロン大統領がイランと独自外交を展開し、多国籍「海峡安全確保ミッション」への参加を呼びかけているが、機雷除去には6カ月程度を要するとも言われ、完全正常化は見通せない状況だ。</p>",
+      source: "Reuters / CNN / global-scm.com",
+      time: "継続中"
+    },
+    items: [
+      { color: "var(--red)", icon: "🇮🇷", tag: "中東", title: "イラン、米国との2回目の協議参加を拒否と国営放送が報道―交渉の泥沼化リスクが浮上", source: "IRNA / 三菱UFJリサーチ", time: "既報",
+        detail: "<p>イランの国営放送は、米国が提案した2回目の直接協議への参加をイランが拒否したと報じた。米国のトランプ大統領は2026年秋の中間選挙を念頭に早期収束を目指しているとされるが、交渉は実質的に停滞している。</p><p>米国の重大な誤算の一つは、イランがホルムズ海峡を封鎖し続ける実力を保持していた点だ。海峡を通過する船舶を攻撃するのは容易な一方、守るのは困難という構造的問題が露わになっている。CENTCOMはイランの港湾への出入りを対象とした「逆封鎖」措置を発動しているが、根本解決には至っていない。</p><p>三菱UFJリサーチは「ホルムズ海峡封鎖の長期化は、テールリスクではなくリスクシナリオとして位置づけるべき」と分析。2026年秋〜2027年にかけての供給制約と生産活動への下押し圧力を警告している。</p>" },
+      { color: "var(--gold)", icon: "⛽", tag: "エネルギー", title: "アジアのLNG価格が40%超急騰、LPGは前月比80%高―化学・製造業の原価直撃", source: "Nikkei Asia / JBpress", time: "既報",
+        detail: "<p>ホルムズ海峡封鎖による供給停滞懸念から、アジアのLNG（液化天然ガス）価格は40%超の急騰を記録。LPG価格は前月比最大80%の急騰が報告されており、プラスチック・合成樹脂・化学繊維の製造原価に直撃している。</p><p>日本郵船・商船三井・川崎汽船は3月初旬からホルムズ海峡の通航を停止し、安全海域での待機を継続。Hapag-Lloydは停戦が維持された場合でも、ネットワーク完全回復に6〜8週間かかるとの見方を示している。</p><p>ペルシャ湾は世界の尿素輸出の40〜50%を占めており、封鎖の長期化は肥料供給を通じて世界の食料安全保障にも影響する可能性がある。UNDPは9月にも世界的な食料危機が発生する恐れがあると警告している。</p>" },
+      { color: "var(--blue)", icon: "🇫🇷", tag: "外交", title: "マクロン仏大統領がイランと電話会談、英仏主導の「海峡安全確保ミッション」参加を呼びかけ", source: "Reuters", time: "5/6",
+        detail: "<p>フランスのマクロン大統領は5月6日、イランのペゼシュキアン大統領と電話会談を実施。「すべての当事者は無条件かつ遅滞なく海峡の封鎖を解除しなければならない」と訴え、英仏主導の多国籍海峡安全確保ミッションへの参加を国際社会に呼びかけた。</p><p>英国はCENTCOMの「逆封鎖」措置に関与しない方針を明確にしており、独自の外交的解決を優先している。タイ・フィリピン・マレーシアなど一部の東南アジア諸国はイランと個別交渉で通航許可を取り付けており、各国の対応は大きくばらついている。</p><p>ADNOCが運航するLNG船がAIS（船舶自動識別装置）を停止した状態でホルムズ海峡を通過したことが確認されており、AIS停止・航路偽装・オマーン沖待機といったリスク回避行動が商船の間で広がっている。</p>" },
+      { color: "var(--accent)", icon: "🇨🇳", tag: "米中", title: "米中、昨年の関税応酬後に小康状態へ―中国は新興国向け輸出拡大でプラス成長を維持", source: "KPMG経済安全保障レポート", time: "既報",
+        detail: "<p>2025年4月に始まった米国の「相互関税」をめぐる米中の高関税応酬は、市場の反発や中国の対抗策により一時的な小康状態に向かった。中国の2025年輸出実績は米国向けを減らす一方、新興国向けを拡大しプラス成長を維持した。</p><p>米国はレアアース・造船・大豆など複数の分野で中国依存を露呈した格好となり、交渉カードの非対称性が浮き彫りになっている。台湾をめぐる米中の駆け引きも加速しており、武器売却に関するトランプ政権の判断が焦点となっている。</p><p>G7財務相会議では中東危機や重要鉱物の供給確保、新型AIの安全保障上の脅威への備えが議論された。日本は「信頼できるAI」の推進を主要議題として提案している。</p>" },
+      { color: "var(--purple)", icon: "🌏", tag: "アジア", title: "コロンビア大統領選の行方と韓国・脱北者問題にNHK国際報道が注目", source: "NHK国際報道2026", time: "6/1",
+        detail: "<p>NHKの国際報道2026は6月1日放送分で、南米コロンビアの大統領選の行方と、韓国社会で深刻化する「孤立する脱北者」問題を特集した。左右の価値観対立が続くコロンビアでは次期大統領の政策方向が地域全体の政治バランスに影響する可能性がある。</p><p>韓国の脱北者問題では、社会統合が進まない実態と経済的孤立が深刻な課題となっている。韓国新政権は日韓シャトル外交の再開を宣言しており、拉致問題を含む北朝鮮対応での日韓協力強化が期待される。</p><p>ASEAN首脳会議では南シナ海における行動規範合意に向けた最終調整が行われており、中国との間の緊張緩和に向けた外交的取り組みが続いている。</p>" },
+    ]
+  },
+
+  /* ── 2ch AIトレンド ── */
+  aitrend: [
+    {
+      num: "1",
+      board: "プログラミング",
+      title: "【朗報/悲報】GitHub Copilot、6月1日から完全従量課金に移行したんだがwwww",
+      preview: "1: ﾜｯﾁｮｲ 2026/06/02 08:12:44\nGPT-5.5やOpus4.7みたいな自律性高いやつは1リクエストで何時間も動くから定額じゃ維持できんよな\n118: ﾜｯﾁｮｲ\nCursorの月額がかえって安く見えてきた件",
+      detail: "<p>GitHub Copilotが2026年6月1日より全プランで完全従量課金制（Usage-Based Billing）へ移行。従来の「プレミアムリクエスト」方式から、使用トークン量に応じた「GitHub AIクレジット」消費方式に変わった。</p><p>背景にあるのは、GPT-5.5やClaude Opus 4.7などフロンティアモデルの高い自律性だ。1回のリクエストで長時間タスクを実行し続けるため、リクエスト数ベースの課金が持続不能になった。Anthropic「Claude Enterprise」も実質的に月額20ドル上限＋超過分従量課金へのシフトが始まっているという報道がある。</p><p>スレッドでは「Cursorの月額がかえってコスパよく見えてきた」「金融機関の基幹システムだとAI使ってる人ゼロ疑惑」などの声が相次いだ。個人開発者からは使いすぎに気づきにくい従量課金への警戒感も強い。</p>",
+      replies: 643,
+      views: "9.2万",
+      hot: true
+    },
+    {
+      num: "2",
+      board: "AI・人工知能",
+      title: "Claude Code使い始めて1週間、まじで人間がコード書く量が10分の1になった報告スレ",
+      preview: "1: ﾜｯﾁｮｲ 2026/06/01 21:05:10\n業務の複雑なリファクタリングも投げてみたら一発でやり遂げた。Claude Code以前とは別の仕事してる感覚\n89: ﾜｯﾁｮｲ\nclaude一度使ったけど金が無限に吸われる。俺は毎月定額のCopilotで……あ、Copilotも従量課金になったのか",
+      detail: "<p>5chプログラミング板のClaude Code体験報告スレが盛り上がっている。「業務の複雑なリファクタリングを投げたら一発でやり遂げた」「Claude Code以前とは別の仕事をしている感覚」など好意的な報告が多数投稿された。</p><p>一方でコスト問題も話題に。「claude一度使ったけど金が無限に吸われる」という声も多く、トークン消費の把握しにくさへの不満が出ている。Cursorと組み合わせて使うワークフローが現状のベストプラクティスという意見も多く見られた。</p><p>イーロン・マスク氏の「2026年末にもプログラミング完全自動化」発言と重ねて議論が発展。「自動化と廃業は別の話、使いこなす側が勝つ」という現実的な見方が支持を集めている。</p>",
+      replies: 521,
+      views: "7.4万",
+      hot: true
+    },
+    {
+      num: "3",
+      board: "AIチャット総合",
+      title: "Geminiのハルシネーションが酷すぎる件 存在しないURLからデータ引っ張ってくるんだが",
+      preview: "4: ﾜｯﾁｮｲ 2026/06/02 01:33:12\nURL読ませるとマシだけど自由回答は信用できない。GPT-5.4とClaudeは明らかに改善されてるのにGeminiだけ取り残されてる",
+      detail: "<p>AIチャット総合スレでGeminiのハルシネーション（幻覚）問題が再燃。「存在しないサイトから存在しないデータを引っ張ってくる」「URLを与えると正確になるが自由回答が信用できない」という報告が相次いだ。</p><p>スレ住民の評価では、GPT-5.4とClaude Opus 4.7はファクトチェック精度が明らかに改善されているのに対し、Geminiは取り残されているとの意見が多数派。ただし「Google Workspace連携・リサーチ用途ならGeminiが最強」という使い分け論も根強い。</p><p>2026年6月時点での現場の棲み分けは「汎用ならGPT-5.4、長文・コードならClaude、Google連携ならGemini」が定着しつつある。LM Arenaスコアでは三者が僅差で競っている。</p>",
+      replies: 338,
+      views: "5.8万",
+      hot: false
+    },
+    {
+      num: "4",
+      board: "AI・人工知能",
+      title: "マスク氏「2026年末にもプログラミング完全自動化」発言、現実的にどう思う？",
+      preview: "1: ﾜｯﾁｮｲ 2026/05/31 19:22:00\nOpenAIもAnthropicの最新AIにコード生成任せたらトップ技術者でも太刀打ちできなくなってるのは事実\n56: 匿名\n自動化と廃業は別の話、使いこなす側が勝つに決まってる",
+      detail: "<p>イーロン・マスク氏が「2026年末にもプログラミングが全自動になる」と発言し（日本経済新聞報道）、5chのAI板で大規模な議論が勃発。スレッドは18万ビューを超えるホットなトピックとなった。</p><p>賛成派は「OpenAIもAnthropicの最新AIにコード生成を任せたらトップ技術者でも腕前でかなわなくなった」と事実を認める声。反対派・現実派は「自動化と廃業は別の話。使いこなす側が勝つ」「複雑な業務システムでは今も人間の頻繁な介入が必要」と慎重論を展開。</p><p>金融機関や公共系のシステム開発者からは「基幹システムだとAI使ってる人ゼロ疑惑」という声も。セキュリティ・コンプライアンス要件が厳しい現場では、AIコーディングツールがプロキシで遮断されているケースも報告されている。</p>",
+      replies: 892,
+      views: "18.3万",
+      hot: true
+    },
+    {
+      num: "5",
+      board: "AIチャット総合",
+      title: "GPT-5.4 vs Claude Opus 4.7 vs Gemini 3.1 Pro、2026年6月時点の最強AI決定戦",
+      preview: "1: ﾜｯﾁｮｲ 2026/06/01 12:00:00\nLM Arenaスコアだと接戦だけど体感GPT-5.4が汎用、長文ならClaude、Google連携ならGeminiって棲み分けが固まってきた感",
+      detail: "<p>2026年6月時点のAI三強を比較するスレが活発に議論中。LM Arena（人間評価ランキング）では三者が僅差で競っており、「最強AI」は用途次第という結論に落ち着きつつある。</p><p>コンテキストウィンドウは Gemini 2.5 Proが最大100万トークン（日本語約70万文字）でトップ。Claude Opus 4.7が20万〜拡張100万、GPT-5.4が128Kトークンという構成。コード生成・設計相談はOpenAIのCodexとGPT-5.4の組み合わせが強力で、長文読解・契約書レビューはClaude、Gmail・スプレッドシートとの連携はGeminiという評価が固まっている。</p><p>料金面ではGrok 4 Fastが圧倒的な低コストとして台頭。Microsoft CopilotにもClaude SonnetとGPT-5.2が搭載されており、エコシステム競争が激化している。</p>",
+      replies: 441,
+      views: "6.9万",
+      hot: false
+    },
+  ],
+
+  /* ── 画像生成AI ── */
+  imagegen: [
+    {
+      gradient: "linear-gradient(135deg, #0a0014 0%, #1a0033 40%, #4a0080 100%)",
+      emoji: "⚡",
+      tool: "Midjourney V7",
+      title: "V7「Draft Mode」が10倍高速生成を実現―ビジネス活用が本格化、V8も準備中",
+      desc: "2025年4月リリースのMidjourney V7はDraft Mode（通常比10倍速）・Voice Prompt（音声入力）・Profiles（スタイル保存）の3機能が特徴。芸術性・プロンプト理解精度で最高峰と評価され広告・ブランディング業界の標準ツールに。V8の準備も進行中。",
+      detail: "<p>Midjourney V7（2025年4月公開）は、画像生成AIの品質競争における現時点の最前線。Draft Modeは通常モードと比べて約10倍の速度で画像を生成でき、1枚あたり数秒〜10秒程度での出力が可能。アイデア出し・大量バリエーション生成からの絞り込みワークフローが劇的に効率化された。</p><p>Voice Prompt（音声入力）はDiscordやWebアプリで利用でき、プロンプト入力の敷居を大幅に下げた。Profiles機能はユーザーのスタイルを保存し、ブランドイメージの一貫性を保った生成を可能にする。これらが相まって広告・ブランディング・プロクリエイティブ業界での標準ツールとしての地位を固めている。</p><p>料金はBasic $8/月（年払）〜Mega $96/月（年払）の4段階で全プラン商用利用可。無料プランは2023年以来復活しておらず、有料加入が必須。2026年2月時点でV8の準備が進んでいると報告されており、さらなる進化が期待される。</p>",
+      tags: ["v7", "draft-mode", "commercial"]
+    },
+    {
+      gradient: "linear-gradient(135deg, #001a00 0%, #003300 40%, #005500 100%)",
+      emoji: "🎌",
+      tool: "NovelAI V4.5",
+      title: "NovelAI Diffusion Anime V4.5―23万時間のH100投入、自然言語プロンプト対応",
+      desc: "2025〜2026年にかけてV3→V4→V4.5と立て続けにアップデート。約23万時間分のH100コンピューティングを投入し、アニメイラスト特有の表現で他サービスを圧倒。Danbooruタグ不要で自然な日本語プロンプトが使用可能に。",
+      detail: "<p>米Anlatan社が提供するNovelAI Diffusion Anime V4.5は、2025〜2026年にかけてV3→V4→V4.5と立て続けにリリースされた最新モデル。約23万時間分のH100コンピューティングリソースを投入し、アニメ・イラスト特有の表現において他サービスの追随を許さない精度を誇る。</p><p>最大の変化点は自然言語プロンプトへの対応だ。かつて必須だったDanbooruタグの羅列（masterpiece, best quality, 1girl...）が不要になり、普通の日本語や英語で指示を出せるようになった。これにより初心者の参入障壁が大幅に下がっている。</p><p>OpenAIやGoogleが厳しい倫理規定を導入する中、NovelAIはユーザーのプライバシーと生成の自由を最優先する方針を維持。R18クリエイターの「聖域」としての地位を保ちながら、商用利用も認めている（著作権はAnlatanが放棄）。サブスクリプション制で無料トライアルなし。</p>",
+      tags: ["anime", "nai-v4-5", "nsfw-ok"]
+    },
+    {
+      gradient: "linear-gradient(135deg, #100800 0%, #2a1500 40%, #5a3000 100%)",
+      emoji: "🌊",
+      tool: "FLUX.2 / Pony V7",
+      title: "FLUX.2とPony V7が自然言語プロンプト対応―Civitaiでカスタムモデル配布も活発",
+      desc: "2026年の最新ローカルモデルFLUX.2とPony V7は、従来必須だったDanbooruタグ形式から自然な日本語・英語プロンプトに対応。NVIDIA RTX 5090等のハイエンドGPUでは高品質生成が大幅高速化。Civitaiでのカスタムモデル配布も活発化。",
+      detail: "<p>2026年のローカル画像生成AI市場は「ハイエンド商用」「ローカル・エンスージアスト」「クラウドWebUI」の三層構造で整理されている。FLUX.2とPony V7はローカル層の最新主力モデルだ。</p><p>FLUX.2はBlack Forest Labsの開発で、Stable Diffusionを超えるクオリティを実現したと評価される。Pony V7とともに自然言語プロンプトへの対応を果たし、従来のDanbooruタグ知識がなくても高品質なイラストを生成できる。NVIDIA RTX 5090等のハイエンドGPU環境では生成速度が大幅に向上している。</p><p>Civitaiではこれらのベースモデルをファインチューニングしたカスタムモデルの配布が活発化。特定のキャラクター・スタイル・題材に特化したLoRAなどが大量に公開されており、日本のクリエイターの参入も増加している。SeaArtなどのクラウドWebUIでも利用可能。</p>",
+      tags: ["flux2", "pony-v7", "local", "civitai"]
+    },
+    {
+      gradient: "linear-gradient(135deg, #000d1a 0%, #001833 40%, #003366 100%)",
+      emoji: "🎬",
+      tool: "Sora / Veo 2 / MJ Video",
+      title: "テキスト→動画生成が商用レベルへ―2026年後半「30秒CM自動生成」時代の到来",
+      desc: "OpenAI Sora、Google Veo 2、Midjourney Video V1が揃い、AI動画生成の比較競争が本格化。2026年後半にはプロンプト一つで30秒の商品CMが生成できる時代の到来が予測されており、動画制作・広告業界での活用実験が加速している。",
+      detail: "<p>Midjourney V1 Video Modelが2025年6月に公開されたのを皮切りに、OpenAI Sora・Google Veo 2と3大プレーヤーによるAI動画生成の競争が本格化。Lifehackerなどの海外メディアでもSora vs Veo 2 vs MJ Videoの比較が相次いで掲載されている。</p><p>Sora・Veo 2ともに映画的な画角変換・キャラクターの一貫性・物理法則の再現性が大幅向上し、短編CMや製品紹介動画での実用に耐えうる品質に達しつつある。2026年後半にはプロンプト一つで30秒の商品CMが自動生成できる時代が到来するとの予測が専門家の間で広がっている。</p><p>NeRF・Gaussian Splattingによる画像→3Dモデル生成も成熟期に入り、ゲーム開発・メタバース・AR/VR分野での活用が本格化。大手企業が自社ブランドを学習させたカスタムAIモデルの内製化も進んでおり、クリエイティブ産業の構造変化が加速している。</p>",
+      tags: ["sora", "veo2", "video-gen", "cm"]
+    },
+    {
+      gradient: "linear-gradient(135deg, #0d0010 0%, #200030 40%, #440060 100%)",
+      emoji: "🏢",
+      tool: "企業内製化トレンド",
+      title: "大手企業が自社ブランド学習のカスタムAIモデル構築を本格化―3D生成も成熟期へ",
+      desc: "ブランドガイドラインやデザインシステムを学習した社内専用画像生成AIの構築が標準化しつつある。NeRF・Gaussian Splattingによる画像→3Dモデル生成も成熟期に入り、ゲーム開発・メタバース・AR/VR分野での本格活用が始まっている。",
+      detail: "<p>2026年、大手企業による画像生成AIの内製化が一つの潮流となっている。自社のブランドガイドライン・デザインシステム・製品ビジュアルを学習させた専用モデルを構築し、外部サービスへの依存なく一貫性のあるビジュアルコンテンツを量産する体制が広がっている。</p><p>Adobe Fireflyのエンタープライズ版、Midjourney Profilesなど商用サービス側も企業向け機能を拡充。生成塗りつぶし・スタイルリファレンス機能を活用したPhotoshopとのシームレスな連携が実務ワークフローに組み込まれ始めている。</p><p>3D生成の領域でもNeRF（Neural Radiance Field）やGaussian Splattingによる画像→3Dモデルの自動変換技術が成熟し、ゲーム開発・メタバース・AR/VRでの活用が本格化。製品ECサイトでの3Dプレビュー自動生成など、具体的なビジネス応用も始まっている。</p>",
+      tags: ["enterprise", "3d-gen", "metaverse", "brand-ai"]
+    },
+  ],
+
+  /* ── テクノロジー ── */
+  tech: {
+    hero: {
+      emoji: "💻",
+      tag: "テック",
+      title: "テクノロジーニュース―次回「更新して」送信時に最新データに差し替わります",
+      desc: "このタブは次回の更新で最新のテクノロジーニュースに切り替わります。スマートフォン・半導体・EV・宇宙開発・サイバーセキュリティ・スタートアップなど幅広いテック動向をカバーします。",
+      detail: "<p>テクノロジータブが追加されました。次回このチャットで「更新して」と送ると、最新のテクノロジーニュースが自動的に入ります。</p><p>カバー予定のトピック：スマートフォン・半導体・EV・自動運転・宇宙開発・サイバーセキュリティ・スタートアップ・量子コンピュータなど。</p>",
+      source: "PULSE編集部",
+      time: "準備中"
+    },
+    items: [
+      { color: "#ff8c44", icon: "📱", tag: "スマートフォン", title: "次回更新でここに最新スマートフォン・ガジェットニュースが入ります", source: "準備中", time: "-", detail: "<p>次回「更新して」と送信すると最新データに差し替わります。</p>" },
+      { color: "#ff8c44", icon: "🔬", tag: "半導体", title: "次回更新でここに半導体・チップ関連ニュースが入ります", source: "準備中", time: "-", detail: "<p>次回「更新して」と送信すると最新データに差し替わります。</p>" },
+      { color: "#ff8c44", icon: "🚗", tag: "EV・自動車", title: "次回更新でここにEV・自動運転ニュースが入ります", source: "準備中", time: "-", detail: "<p>次回「更新して」と送信すると最新データに差し替わります。</p>" },
+    ]
+  },
+
+  /* ── AIエージェント ── */
+  agent: {
+    hero: {
+      emoji: "💡",
+      tag: "AIエージェント",
+      title: "AIエージェント活用―次回「更新して」送信時に最新事例に差し替わります",
+      desc: "Claude・GPT・Geminiを使ったAIエージェントの実用事例、話題のワークフロー自動化、業務改革の最前線をお届けします。SNS発のバズり事例も随時収集します。",
+      detail: "<p>AIエージェントタブが追加されました。次回「更新して」と送ると最新の活用事例が入ります。</p><p>カバー予定：Claude Code・GPT Operator・Gemini Deep Research等の最新事例、業務自動化・コード生成・リサーチ自動化の実用例、X/Reddit/5chで話題のエージェント活用法など。</p>",
+      source: "PULSE編集部",
+      time: "準備中"
+    },
+    items: [
+      { color: "#00e5ff", icon: "🔄", tag: "自動化", title: "次回更新でここに業務自動化・ワークフロー系の事例が入ります", source: "準備中", time: "-", detail: "<p>次回「更新して」と送信すると最新データに差し替わります。</p>" },
+      { color: "#00e5ff", icon: "💬", tag: "活用事例", title: "次回更新でここにSNS発のバズり活用事例が入ります", source: "準備中", time: "-", detail: "<p>次回「更新して」と送信すると最新データに差し替わります。</p>" },
+      { color: "#00e5ff", icon: "🛠️", tag: "ツール", title: "次回更新でここにエージェント系ツール・フレームワーク情報が入ります", source: "準備中", time: "-", detail: "<p>次回「更新して」と送信すると最新データに差し替わります。</p>" },
+    ]
+  }
+};
+
+/* ============================================================
+   🔧 RENDER ENGINE — 以下は変更不要
+   ============================================================ */
+
+// Date
+const now = new Date();
+const dateEl = document.getElementById('dateBadge');
+const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+dateEl.innerHTML = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}<br>${days[now.getDay()]}`;
+
+// Hero Card
+function renderHero(data, containerId) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = `
+    <div class="hero-card">
+      <div class="hero-thumb">
+        <div class="hero-thumb-inner">
+          <span class="hero-thumb-emoji">${data.emoji}</span>
+        </div>
+        <div class="hero-overlay"></div>
+      </div>
+      <div class="hero-body">
+        <div class="hero-tag">⬡ ${data.tag}</div>
+        <div class="hero-title">${data.title}</div>
+        <div class="hero-desc">${data.desc}</div>
+        <div class="hero-meta">
+          <span class="hero-source">${data.source}</span>
+          <span class="hero-time">${data.time}</span>
+        </div>
+        <div class="tap-hint">▼ タップで詳細を読む</div>
+      </div>
+    </div>`;
+}
+
+// News List
+function renderNewsList(items, listId) {
+  const el = document.getElementById(listId);
+  el.innerHTML = items.map(item => `
+    <div class="news-item" style="--item-color:${item.color}">
+      <div class="news-icon">${item.icon}</div>
+      <div class="news-content">
+        <div class="news-tag">${item.tag}</div>
+        <div class="news-title">${item.title}</div>
+        <div class="news-footer">
+          <span class="news-source">${item.source}</span>
+          <span class="news-dot"></span>
+          <span class="news-time">${item.time}</span>
+        </div>
+      </div>
+      <div class="news-importance"></div>
+    </div>`).join('');
+}
+
+// Thread List
+function renderThreadList(threads, listId) {
+  const el = document.getElementById(listId);
+  el.innerHTML = threads.map((t, i) => `
+    <div class="thread-item" onclick="openModal({tag:t.board,title:t.title,source:'5ch / '+t.board,time:t.replies+'レス',desc:t.preview,detail:t.detail,color:'var(--gold)'})" data-idx="${i}" data-type="aitrend">
+      <div class="thread-header">
+        <span class="thread-num">#${t.num}</span>
+        <span class="thread-board">${t.board}</span>
+        ${t.hot ? '<span class="thread-hot">🔥 HOT</span>' : ''}
+      </div>
+      <div class="thread-title">${t.title}</div>
+      <div class="thread-preview">${t.preview.replace(/\n/g,'<br>')}</div>
+      <div class="thread-footer">
+        <div class="thread-stat"><span class="thread-stat-icon">💬</span><span class="thread-stat-val">${t.replies}</span></div>
+        <div class="thread-stat"><span class="thread-stat-icon">👁️</span><span class="thread-stat-val">${t.views}</span></div>
+        <div class="tap-hint" style="margin-left:auto">▼ 詳細を読む</div>
+      </div>
+    </div>`).join('');
+  // fix onclick after render
+  el.querySelectorAll('.thread-item').forEach((el, i) => {
+    el.onclick = () => {
+      const t = threads[i];
+      openModal({tag: t.board, title: t.title, source: '5ch / ' + t.board, time: t.replies + 'レス', desc: t.preview.replace(/\n/g,' '), detail: t.detail, color: 'var(--gold)'});
+    };
+  });
+}
+
+// Image Gen List
+function renderImageGenList(items, listId) {
+  const el = document.getElementById(listId);
+  el.innerHTML = items.map((item, i) => `
+    <div class="imggen-item" data-idx="${i}">
+      <div class="imggen-preview">
+        <div class="imggen-gradient" style="background:${item.gradient}"></div>
+        <span style="font-size:40px;position:relative;z-index:1;opacity:0.6">${item.emoji}</span>
+        <span class="imggen-label">${item.tool}</span>
+      </div>
+      <div class="imggen-body">
+        <div class="imggen-tool">◆ ${item.tool}</div>
+        <div class="imggen-title">${item.title}</div>
+        <div class="imggen-desc">${item.desc}</div>
+        <div class="imggen-tags">${item.tags.map(t=>`<span class="imggen-tag">#${t}</span>`).join('')}</div>
+        <div class="tap-hint">▼ 詳細を読む</div>
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('.imggen-item').forEach((el, i) => {
+    el.onclick = () => {
+      const item = items[i];
+      openModal({tag: item.tool, title: item.title, source: item.tool, time: '', desc: item.desc, detail: item.detail, color: 'var(--purple)'});
+    };
+  });
+}
+
+// Count labels
+function setCount(id, n) {
+  document.getElementById(id).textContent = `${n} articles`;
+}
+
+// ── MODAL ──
+function openModal({tag, title, source, time, desc, detail, color}) {
+  document.getElementById('modalTag').textContent = '⬡ ' + tag;
+  document.getElementById('modalTag').style.setProperty('--modal-color', color || 'var(--accent)');
+  document.getElementById('modalTag').style.color = color || 'var(--accent)';
+  document.getElementById('modalTag').style.borderColor = (color || 'var(--accent)').replace('var(--accent)', 'rgba(0,255,170,0.3)');
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalSource').textContent = source;
+  document.getElementById('modalTime').textContent = time;
+  document.getElementById('modalSummary').style.setProperty('border-left-color', color || 'var(--accent)');
+  document.getElementById('modalSummary').textContent = desc;
+  document.getElementById('modalDetail').innerHTML = detail || '<p>詳細情報は準備中です。</p>';
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalOverlay')) {
+    _closeModal();
+  }
+}
+function closeModalBtn() { _closeModal(); }
+function _closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Render all
+renderHero(NEWS_DATA.domestic.hero, 'domestic-hero');
+renderNewsList(NEWS_DATA.domestic.items, 'domestic-list');
+setCount('count-domestic', NEWS_DATA.domestic.items.length + 1);
+
+renderHero(NEWS_DATA.world.hero, 'world-hero');
+renderNewsList(NEWS_DATA.world.items, 'world-list');
+setCount('count-world', NEWS_DATA.world.items.length + 1);
+
+renderThreadList(NEWS_DATA.aitrend, 'aitrend-list');
+setCount('count-aitrend', NEWS_DATA.aitrend.length);
+
+renderImageGenList(NEWS_DATA.imagegen, 'imagegen-list');
+setCount('count-imagegen', NEWS_DATA.imagegen.length);
+
+if (NEWS_DATA.tech) {
+  renderHero(NEWS_DATA.tech.hero, 'tech-hero');
+  renderNewsList(NEWS_DATA.tech.items, 'tech-list');
+  setCount('count-tech', NEWS_DATA.tech.items.length + 1);
+}
+
+if (NEWS_DATA.agent) {
+  renderHero(NEWS_DATA.agent.hero, 'agent-hero');
+  renderNewsList(NEWS_DATA.agent.items, 'agent-list');
+  setCount('count-agent', NEWS_DATA.agent.items.length + 1);
+}
+
+// attach modal to hero cards and news items after render
+function attachHeroModal(data, containerId, color) {
+  const el = document.getElementById(containerId);
+  const card = el.querySelector('.hero-card');
+  if (card) card.addEventListener('click', () => {
+    openModal({tag: data.tag, title: data.title, source: data.source, time: data.time, desc: data.desc, detail: data.detail, color});
+  });
+}
+function attachNewsModal(items, listId) {
+  const list = document.getElementById(listId);
+  list.querySelectorAll('.news-item').forEach((el, i) => {
+    el.addEventListener('click', () => {
+      const item = items[i];
+      openModal({tag: item.tag, title: item.title, source: item.source, time: item.time, desc: item.title, detail: item.detail, color: item.color});
+    });
+  });
+}
+
+attachHeroModal(NEWS_DATA.domestic.hero, 'domestic-hero', 'var(--accent)');
+attachNewsModal(NEWS_DATA.domestic.items, 'domestic-list');
+attachHeroModal(NEWS_DATA.world.hero, 'world-hero', 'var(--blue)');
+attachNewsModal(NEWS_DATA.world.items, 'world-list');
+if (NEWS_DATA.tech) {
+  attachHeroModal(NEWS_DATA.tech.hero, 'tech-hero', '#ff8c44');
+  attachNewsModal(NEWS_DATA.tech.items, 'tech-list');
+}
+if (NEWS_DATA.agent) {
+  attachHeroModal(NEWS_DATA.agent.hero, 'agent-hero', '#00e5ff');
+  attachNewsModal(NEWS_DATA.agent.items, 'agent-list');
+}
+
+// Tab switching
+const tabs = document.querySelectorAll('.tab-btn');
+const panels = document.querySelectorAll('.tab-panel');
+const scrollArea = document.getElementById('scrollArea');
+
+tabs.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.tab;
+    tabs.forEach(t => t.classList.remove('active'));
+    panels.forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + target).classList.add('active');
+    scrollArea.scrollTo({ top: 0, behavior: 'instant' });
+  });
+});
+
+// swipe down to close modal
+let startY = 0;
+document.getElementById('modalSheet').addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, {passive: true});
+document.getElementById('modalSheet').addEventListener('touchend', e => {
+  if (e.changedTouches[0].clientY - startY > 80) _closeModal();
+}, {passive: true});
+
+// ── UPDATE PANEL ──
+function openUpdatePanel() {
+  document.getElementById('updateOverlay').classList.add('open');
+  document.getElementById('updateTextarea').value = '';
+  document.getElementById('updateStatus').className = 'update-status';
+  setTimeout(() => document.getElementById('updateTextarea').focus(), 300);
+}
+function closeUpdatePanel() {
+  document.getElementById('updateOverlay').classList.remove('open');
+}
+
+function applyUpdate() {
+  const raw = document.getElementById('updateTextarea').value.trim();
+  const statusEl = document.getElementById('updateStatus');
+  if (!raw) {
+    statusEl.textContent = '⚠ テキストエリアが空です';
+    statusEl.className = 'update-status error';
+    return;
+  }
+  try {
+    // Extract the object literal from const NEWS_DATA = {...};
+    const match = raw.match(/const\s+NEWS_DATA\s*=\s*([\s\S]+?);\s*$/);
+    const objStr = match ? match[1] : raw;
+    // Use Function constructor to safely evaluate the object
+    const newData = new Function('return ' + objStr)();
+    if (!newData.domestic || !newData.world || !newData.aitrend || !newData.imagegen || !newData.tech || !newData.agent) {
+      throw new Error('必要なキー(domestic/world/aitrend/imagegen/tech/agent)が見つかりません');
+    }
+    // Apply to global and re-render
+    Object.assign(NEWS_DATA, newData);
+    reRenderAll();
+    statusEl.textContent = '✓ 更新しました！';
+    statusEl.className = 'update-status success';
+    setTimeout(() => closeUpdatePanel(), 1200);
+  } catch(e) {
+    statusEl.textContent = '✗ エラー: ' + e.message;
+    statusEl.className = 'update-status error';
+  }
+}
+
+function reRenderAll() {
+  renderHero(NEWS_DATA.domestic.hero, 'domestic-hero');
+  renderNewsList(NEWS_DATA.domestic.items, 'domestic-list');
+  setCount('count-domestic', NEWS_DATA.domestic.items.length + 1);
+  renderHero(NEWS_DATA.world.hero, 'world-hero');
+  renderNewsList(NEWS_DATA.world.items, 'world-list');
+  setCount('count-world', NEWS_DATA.world.items.length + 1);
+  renderThreadList(NEWS_DATA.aitrend, 'aitrend-list');
+  setCount('count-aitrend', NEWS_DATA.aitrend.length);
+  renderImageGenList(NEWS_DATA.imagegen, 'imagegen-list');
+  setCount('count-imagegen', NEWS_DATA.imagegen.length);
+  if (NEWS_DATA.tech) {
+    renderHero(NEWS_DATA.tech.hero, 'tech-hero');
+    renderNewsList(NEWS_DATA.tech.items, 'tech-list');
+    setCount('count-tech', NEWS_DATA.tech.items.length + 1);
+    attachHeroModal(NEWS_DATA.tech.hero, 'tech-hero', '#ff8c44');
+    attachNewsModal(NEWS_DATA.tech.items, 'tech-list');
+  }
+  if (NEWS_DATA.agent) {
+    renderHero(NEWS_DATA.agent.hero, 'agent-hero');
+    renderNewsList(NEWS_DATA.agent.items, 'agent-list');
+    setCount('count-agent', NEWS_DATA.agent.items.length + 1);
+    attachHeroModal(NEWS_DATA.agent.hero, 'agent-hero', '#00e5ff');
+    attachNewsModal(NEWS_DATA.agent.items, 'agent-list');
+  }
+  attachHeroModal(NEWS_DATA.domestic.hero, 'domestic-hero', 'var(--accent)');
+  attachNewsModal(NEWS_DATA.domestic.items, 'domestic-list');
+  attachHeroModal(NEWS_DATA.world.hero, 'world-hero', 'var(--blue)');
+  attachNewsModal(NEWS_DATA.world.items, 'world-list');
+}
+</script>
+</body>
+</html>
