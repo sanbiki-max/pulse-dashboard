@@ -6,7 +6,7 @@ import urllib.request
 from datetime import datetime
 
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
-MODEL = "gemini-1.5-flash-latest"
+MODEL = "gemini-2.5-flash-preview-05-20"
 
 PROMPT = """
 あなたはWebリサーチアシスタントです。今日の最新情報を収集し、
