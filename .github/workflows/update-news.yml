@@ -3,6 +3,10 @@ on:
   schedule:
     - cron: '0 21 * * *'  # 日本時間 毎朝6時
   workflow_dispatch:
+
+permissions:
+  contents: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
