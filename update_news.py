@@ -62,51 +62,100 @@ USER_PROMPT = f"""
 必ず const NEWS_DATA = {{ で始まり }}; で終わる形式のみ出力してください。
 """
 
+WEB_SEARCH_TOOL = {
+    "type": "web_search_20250305",
+    "name": "web_search",
+    "max_uses": 10
+}
 
-def call_claude_with_retry(max_retries=5):
-    """Claude API（Web検索ツール付き）を呼び出す"""
+
+def api_call(messages):
+    """Anthropic APIを1回呼び出す"""
+    url = "https://api.anthropic.com/v1/messages"
+    payload = {
+        "model": MODEL,
+        "max_tokens": 8192,
+        "system": SYSTEM_PROMPT,
+        "messages": messages,
+        "tools": [WEB_SEARCH_TOOL]
+    }
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01"
+        }
+    )
+    with urllib.request.urlopen(req, timeout=300) as resp:
+        return json.loads(resp.read())
+
+
+def call_claude_with_retry(max_retries=3):
+    """
+    Web検索ツールを使うClaudeはagentic loopが必要。
+    stop_reason が "end_turn" になるまでやり取りを繰り返す。
+    """
     for attempt in range(max_retries):
         try:
-            url = "https://api.anthropic.com/v1/messages"
-            payload = {
-                "model": MODEL,
-                "max_tokens": 8192,
-                "system": SYSTEM_PROMPT,
-                "messages": [
-                    {"role": "user", "content": USER_PROMPT}
-                ],
-                "tools": [
-                    {
-                        "type": "web_search_20250305",
-                        "name": "web_search",
-                        "max_uses": 10
-                    }
+            messages = [{"role": "user", "content": USER_PROMPT}]
+            loop_count = 0
+
+            while True:
+                loop_count += 1
+                print(f"   APIコール #{loop_count}...")
+                result = api_call(messages)
+
+                stop_reason = result.get("stop_reason")
+                content = result.get("content", [])
+
+                print(f"   stop_reason: {stop_reason}, ブロック数: {len(content)}")
+                for block in content:
+                    print(f"   ブロックtype: {block.get('type')}")
+
+                # assistantのメッセージを会話履歴に追加
+                messages.append({"role": "assistant", "content": content})
+
+                # 終了条件
+                if stop_reason == "end_turn":
+                    # テキストブロックを結合して返す
+                    text_parts = [
+                        block.get("text", "")
+                        for block in content
+                        if block.get("type") == "text"
+                    ]
+                    final_text = "\n".join(text_parts)
+                    print(f"   最終テキスト長: {len(final_text)}文字")
+                    return final_text
+
+                # ツール使用中 → tool_resultを返して続行
+                if stop_reason == "tool_use":
+                    tool_results = []
+                    for block in content:
+                        if block.get("type") == "tool_use":
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": block.get("id"),
+                                "content": "検索結果はClaudeのサーバーサイドで処理されます。"
+                            })
+                    if tool_results:
+                        messages.append({"role": "user", "content": tool_results})
+                    continue
+
+                # それ以外のstop_reason（max_tokens等）
+                print(f"   想定外のstop_reason: {stop_reason}")
+                text_parts = [
+                    block.get("text", "")
+                    for block in content
+                    if block.get("type") == "text"
                 ]
-            }
-            data = json.dumps(payload).encode("utf-8")
-            req = urllib.request.Request(
-                url,
-                data=data,
-                headers={
-                    "Content-Type": "application/json",
-                    "x-api-key": ANTHROPIC_API_KEY,
-                    "anthropic-version": "2023-06-01"
-                }
-            )
-            with urllib.request.urlopen(req, timeout=300) as resp:
-                result = json.loads(resp.read())
-
-            # レスポンスからテキストブロックを抽出
-            text_parts = []
-            for block in result.get("content", []):
-                if block.get("type") == "text":
-                    text_parts.append(block.get("text", ""))
-
-            return "\n".join(text_parts)
+                return "\n".join(text_parts)
 
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="replace")
-            print(f"試行{attempt+1} HTTPエラー {e.code}: {body[:300]}")
+            print(f"試行{attempt+1} HTTPエラー {e.code}: {body[:500]}")
         except Exception as e:
             print(f"試行{attempt+1}失敗: {e}")
 
@@ -128,13 +177,18 @@ def extract_news_data(text):
         text = re.sub(r'\n?```$', '', text)
     text = text.strip()
 
-    # const NEWS_DATA = {...}; を探して抽出
+    # const NEWS_DATA = {...}; を探して抽出（ネストした{}に対応）
     if not text.startswith("const NEWS_DATA"):
-        match = re.search(r'const NEWS_DATA\s*=\s*\{[\s\S]*?\};', text)
+        match = re.search(r'(const NEWS_DATA\s*=\s*\{[\s\S]*)', text)
         if match:
-            text = match.group(0)
+            text = match.group(1)
         else:
-            raise ValueError("NEWS_DATAが見つかりませんでした。レスポンス内容を確認してください。")
+            print(f"⚠️ テキスト全体:\n{text[:1000]}")
+            raise ValueError("NEWS_DATAが見つかりませんでした。")
+
+    # 末尾の ; を確認・補完
+    if not text.rstrip().endswith(";"):
+        text = text.rstrip() + ";"
 
     return text
 
@@ -148,7 +202,7 @@ def update_html(news_data_js):
     new_html = re.sub(pattern, news_data_js, html, count=1)
 
     if new_html == html:
-        raise ValueError("index.html内のNEWS_DATAが見つかりませんでした。パターンを確認してください。")
+        raise ValueError("index.html内のNEWS_DATAが見つかりませんでした。")
 
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(new_html)
@@ -166,7 +220,6 @@ def main():
     print("🔍 NEWS_DATAを抽出中...")
     news_data_js = extract_news_data(raw_result)
 
-    # 先頭200文字をプレビュー表示
     print(f"   抽出結果プレビュー: {news_data_js[:200]}...")
 
     update_html(news_data_js)
