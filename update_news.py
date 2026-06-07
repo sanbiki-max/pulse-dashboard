@@ -54,11 +54,19 @@ const NEWS_DATA = {
 };
 """
 
-USER_PROMPT = f"""
-今日（{datetime.now().strftime('%Y年%m月%d日')}）の最新ニュースをWeb検索で収集し、
-ダッシュボード用のJavaScriptオブジェクトを生成してください。
+def get_user_prompt():
+    today = datetime.now().strftime('%Y年%m月%d日')
+    return f"""
+今日は{today}です。
 
-各カテゴリについて実際に検索して最新情報を取得してから生成してください。
+【重要】以下のルールを必ず守ってください：
+- 「{today}」または直近24時間以内に発生・報道されたニュースのみ使用すること
+- それより古い記事は絶対に使わないこと
+- 各カテゴリの検索クエリに必ず「{today}」または「2026年6月」を含めること
+- 検索結果の日付を必ず確認し、古いニュースは除外すること
+- 見つからない場合は直近の最新ニュースを使うこと（古くても今週以内）
+
+各カテゴリについて実際にWeb検索して最新情報を取得してから生成してください。
 必ず const NEWS_DATA = {{ で始まり }}; で終わる形式のみ出力してください。
 """
 
@@ -100,7 +108,8 @@ def call_claude_with_retry(max_retries=3):
     """
     for attempt in range(max_retries):
         try:
-            messages = [{"role": "user", "content": USER_PROMPT}]
+            user_prompt = get_user_prompt()
+            messages = [{"role": "user", "content": user_prompt}]
             loop_count = 0
 
             while True:
@@ -120,7 +129,6 @@ def call_claude_with_retry(max_retries=3):
 
                 # 終了条件
                 if stop_reason == "end_turn":
-                    # テキストブロックを結合して返す
                     text_parts = [
                         block.get("text", "")
                         for block in content
@@ -177,7 +185,7 @@ def extract_news_data(text):
         text = re.sub(r'\n?```$', '', text)
     text = text.strip()
 
-    # const NEWS_DATA = {...}; を探して抽出（ネストした{}に対応）
+    # const NEWS_DATA = {...}; を探して抽出
     if not text.startswith("const NEWS_DATA"):
         match = re.search(r'(const NEWS_DATA\s*=\s*\{[\s\S]*)', text)
         if match:
@@ -213,6 +221,7 @@ def update_html(news_data_js):
 def main():
     print(f"🚀 ニュース更新開始: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"   モデル: {MODEL}")
+    print(f"   対象日付: {datetime.now().strftime('%Y年%m月%d日')}")
 
     print("📡 Claude API（Web検索）を呼び出し中...")
     raw_result = call_claude_with_retry()
