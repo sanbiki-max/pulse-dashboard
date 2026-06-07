@@ -1,42 +1,35 @@
 import os
 import re
 import json
+import time
 import urllib.request
-import urllib.error
 from datetime import datetime
 
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
-MODEL = "gemini-2.0-flash-lite"
+MODEL = "gemini-1.5-flash-latest"
 
 PROMPT = """
-あなたはWebリサーチアシスタントです。今日の最新情報を検索し、
+あなたはWebリサーチアシスタントです。今日の最新情報を収集し、
 ニュースダッシュボード用のJavaScriptオブジェクトを生成してください。
 
-以下の6カテゴリについて過去24時間以内の最新情報を収集し、
+以下の6カテゴリについて最新情報を収集し、
 const NEWS_DATA = { から }; までのJavaScriptオブジェクトのみを出力してください。
-余計な解説・前置き・コードブロック記号(```)は絶対に含めないでください。
+余計な解説・前置き・コードブロック記号は絶対に含めないでください。
 
 【収集カテゴリ】
-1. domestic（国内ニュース）- 政治・経済・社会・気象・SNS話題
-   hero（1本）+ items（4〜5本）
-2. world（世界情勢）- 国際政治・地政学・海外市場・SNS拡散ニュース
-   hero（1本）+ items（4〜5本）
-3. aitrend（2ch/5ch AIトレンド）- 5ch・X・Redditで話題のAI
-   スレッド形式5本（num,board,title,preview,detail,replies,views,hot）
-4. imagegen（画像生成AI）- Midjourney・NovelAI・FLUX等の最新動向
-   カード形式5本（gradient,emoji,tool,title,desc,detail,tags）
-5. tech（テクノロジー）- 半導体・スマホ・EV・量子・サイバー
-   hero（1本）+ items（4〜5本）
-6. agent（AIエージェント活用）- Claude Code・GPT等の最新事例
-   hero（1本）+ items（4〜5本）
+1. domestic（国内ニュース）hero1本+items4本
+2. world（世界情勢）hero1本+items4本
+3. aitrend（AIトレンド）スレッド形式5本 num,board,title,preview,detail,replies,views,hot
+4. imagegen（画像生成AI）カード形式5本 gradient,emoji,tool,title,desc,detail,tags
+5. tech（テクノロジー）hero1本+items4本
+6. agent（AIエージェント）hero1本+items4本
 
-【各itemの必須フィールド】
-- hero/items（domestic,world,tech,agent）: emoji,tag,title,desc,detail,source,time
-- itemsのcolor: var(--accent),var(--red),var(--gold),var(--blue),var(--purple)
-- agentは"#00e5ff"、techは"#ff8c44"を使用
-- detailはHTML段落形式（<p>タグ）で500文字程度
+hero/itemsの必須フィールド: emoji,tag,title,desc,detail,source,time
+itemsのcolor: var(--accent),var(--red),var(--gold),var(--blue),var(--purple)
+agentは"#00e5ff"、techは"#ff8c44"
+detailは<p>タグのHTML形式で300文字程度
 
-【出力形式】必ずこの形式で出力してください：
+出力形式:
 const NEWS_DATA = {
   domestic: { hero: {...}, items: [...] },
   world: { hero: {...}, items: [...] },
@@ -47,16 +40,27 @@ const NEWS_DATA = {
 };
 """
 
-def call_gemini(prompt):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={GEMINI_API_KEY}"
-    data = json.dumps({
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"maxOutputTokens": 8192, "temperature": 0.7}
-    }).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        result = json.loads(resp.read())
-    return result["candidates"][0]["content"]["parts"][0]["text"]
+def call_gemini_with_retry(prompt, max_retries=5):
+    for attempt in range(max_retries):
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={GEMINI_API_KEY}"
+            data = json.dumps({
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"maxOutputTokens": 8192, "temperature": 0.7}
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                url, data=data,
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                result = json.loads(resp.read())
+            return result["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception as e:
+            wait = 60 * (attempt + 1)
+            print(f"試行{attempt+1}失敗: {e} → {wait}秒待機")
+            if attempt < max_retries - 1:
+                time.sleep(wait)
+    raise Exception("最大リトライ回数に達しました")
 
 def update_html(news_data_js):
     with open("index.html", "r", encoding="utf-8") as f:
@@ -69,8 +73,7 @@ def update_html(news_data_js):
 
 def main():
     print(f"ニュース更新開始: {datetime.now()}")
-    print("Gemini APIを呼び出し中...")
-    result = call_gemini(PROMPT)
+    result = call_gemini_with_retry(PROMPT)
     result = result.strip()
     if result.startswith("```"):
         result = re.sub(r'^```[a-z]*\n?', '', result)
