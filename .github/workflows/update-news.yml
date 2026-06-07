@@ -1,23 +1,19 @@
 name: Update News
-
 on:
   schedule:
     - cron: '0 21 * * *'  # 日本時間 毎朝6時
   workflow_dispatch:
-
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Update news with Gemini
+      - name: Update news with Claude
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 update_news.py
-
       - name: Commit and push
         run: |
           git config user.name "github-actions"
