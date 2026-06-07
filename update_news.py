@@ -124,10 +124,8 @@ def call_claude_with_retry(max_retries=3):
                 for block in content:
                     print(f"   ブロックtype: {block.get('type')}")
 
-                # assistantのメッセージを会話履歴に追加
                 messages.append({"role": "assistant", "content": content})
 
-                # 終了条件
                 if stop_reason == "end_turn":
                     text_parts = [
                         block.get("text", "")
@@ -138,7 +136,6 @@ def call_claude_with_retry(max_retries=3):
                     print(f"   最終テキスト長: {len(final_text)}文字")
                     return final_text
 
-                # ツール使用中 → tool_resultを返して続行
                 if stop_reason == "tool_use":
                     tool_results = []
                     for block in content:
@@ -152,7 +149,6 @@ def call_claude_with_retry(max_retries=3):
                         messages.append({"role": "user", "content": tool_results})
                     continue
 
-                # それ以外のstop_reason（max_tokens等）
                 print(f"   想定外のstop_reason: {stop_reason}")
                 text_parts = [
                     block.get("text", "")
@@ -179,13 +175,11 @@ def extract_news_data(text):
     """テキストからconst NEWS_DATA = {...};を抽出してクリーニング"""
     text = text.strip()
 
-    # コードブロック記号を除去
     if text.startswith("```"):
         text = re.sub(r'^```[a-z]*\n?', '', text)
         text = re.sub(r'\n?```$', '', text)
     text = text.strip()
 
-    # const NEWS_DATA = {...}; を探して抽出
     if not text.startswith("const NEWS_DATA"):
         match = re.search(r'(const NEWS_DATA\s*=\s*\{[\s\S]*)', text)
         if match:
@@ -194,7 +188,6 @@ def extract_news_data(text):
             print(f"⚠️ テキスト全体:\n{text[:1000]}")
             raise ValueError("NEWS_DATAが見つかりませんでした。")
 
-    # 末尾の ; を確認・補完
     if not text.rstrip().endswith(";"):
         text = text.rstrip() + ";"
 
@@ -202,15 +195,20 @@ def extract_news_data(text):
 
 
 def update_html(news_data_js):
-    """index.htmlのNEWS_DATAを更新する"""
+    """index.htmlの<script>内のNEWS_DATAのみを更新する"""
     with open("index.html", "r", encoding="utf-8") as f:
         html = f.read()
 
-    pattern = r'const NEWS_DATA\s*=\s*\{[\s\S]*?\};'
-    new_html = re.sub(pattern, news_data_js, html, count=1)
+    # <script>タグ内のconst NEWS_DATA = {...}; のみを対象にする
+    pattern = r'(<script>[\s\S]*?)(const NEWS_DATA\s*=\s*\{[\s\S]*?\};)([\s\S]*?</script>)'
+
+    def replacer(m):
+        return m.group(1) + news_data_js + m.group(3)
+
+    new_html = re.sub(pattern, replacer, html, count=1)
 
     if new_html == html:
-        raise ValueError("index.html内のNEWS_DATAが見つかりませんでした。")
+        raise ValueError("index.html内の<script>タグのNEWS_DATAが見つかりませんでした。")
 
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(new_html)
