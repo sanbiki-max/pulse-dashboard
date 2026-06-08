@@ -78,7 +78,6 @@ WEB_SEARCH_TOOL = {
 
 
 def api_call(messages):
-    """Anthropic APIを1回呼び出す"""
     url = "https://api.anthropic.com/v1/messages"
     payload = {
         "model": MODEL,
@@ -102,10 +101,6 @@ def api_call(messages):
 
 
 def call_claude_with_retry(max_retries=3):
-    """
-    Web検索ツールを使うClaudeはagentic loopが必要。
-    stop_reason が "end_turn" になるまでやり取りを繰り返す。
-    """
     for attempt in range(max_retries):
         try:
             user_prompt = get_user_prompt()
@@ -171,15 +166,43 @@ def call_claude_with_retry(max_retries=3):
     raise Exception("最大リトライ回数に達しました")
 
 
+def fix_js_syntax(text):
+    """JavaScriptの構文エラーを自動修正する"""
+
+    # 配列・オブジェクトの末尾の ]; や }; の前にある誤った ; を除去
+    # 例: ["a", "b"]; → ["a", "b"],
+    # ただし最後の }; は残す
+
+    # パターン1: 配列末尾の ];  を ], に修正（最終行以外）
+    text = re.sub(r'\];\s*\n(\s*[}\]])', r'],\n\1', text)
+
+    # パターン2: オブジェクト末尾の };  を }, に修正（最終行以外）
+    text = re.sub(r'\};\s*\n(\s*[{\[])', r'},\n\1', text)
+
+    # パターン3: 値の後の誤った ; を , に修正
+    # 例: "value"; → "value",
+    text = re.sub(r'("|\d|true|false)\s*;\s*\n(\s*["\w{[])', r'\1,\n\2', text)
+
+    # 末尾が }; で終わるように保証
+    text = text.rstrip()
+    if not text.endswith("};"):
+        if text.endswith("}"):
+            text += ";"
+
+    return text
+
+
 def extract_news_data(text):
     """テキストからconst NEWS_DATA = {...};を抽出してクリーニング"""
     text = text.strip()
 
+    # コードブロック記号を除去
     if text.startswith("```"):
         text = re.sub(r'^```[a-z]*\n?', '', text)
         text = re.sub(r'\n?```$', '', text)
     text = text.strip()
 
+    # const NEWS_DATA = {...}; を探して抽出
     if not text.startswith("const NEWS_DATA"):
         match = re.search(r'(const NEWS_DATA\s*=\s*\{[\s\S]*)', text)
         if match:
@@ -188,8 +211,12 @@ def extract_news_data(text):
             print(f"⚠️ テキスト全体:\n{text[:1000]}")
             raise ValueError("NEWS_DATAが見つかりませんでした。")
 
+    # 末尾の ; を確認・補完
     if not text.rstrip().endswith(";"):
         text = text.rstrip() + ";"
+
+    # JavaScript構文エラーを自動修正
+    text = fix_js_syntax(text)
 
     return text
 
